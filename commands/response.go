@@ -219,6 +219,10 @@ func parseErrorResponse(payload []byte) error {
 }
 
 func parseSessionMessage(payload []byte) (Response, error) {
+	if len(payload) < 1+8 {
+		return nil, errors.New("invalid response payload length")
+	}
+
 	return &SessionMessageResponse{
 		SessionID:     payload[0],
 		EncryptedData: payload[1 : len(payload)-8],
@@ -227,6 +231,10 @@ func parseSessionMessage(payload []byte) (Response, error) {
 }
 
 func parseDeviceInfoResponse(payload []byte) (Response, error) {
+	if len(payload) < 9 {
+		return nil, errors.New("invalid response payload length")
+	}
+
 	var serialNumber uint32
 	err := binary.Read(bytes.NewReader(payload[3:7]), binary.BigEndian, &serialNumber)
 	if err != nil {
@@ -239,12 +247,12 @@ func parseDeviceInfoResponse(payload []byte) (Response, error) {
 	}
 
 	return &DeviceInfoResponse{
-		MajorVersion: payload[0],
-		MinorVersion: payload[1],
-		BuildVersion: payload[2],
-		SerialNumber: serialNumber,
-		LogTotal: payload[7],
-		LogUsed: payload[8],
+		MajorVersion:        payload[0],
+		MinorVersion:        payload[1],
+		BuildVersion:        payload[2],
+		SerialNumber:        serialNumber,
+		LogTotal:            payload[7],
+		LogUsed:             payload[8],
 		SupportedAlgorithms: supportedAlgorithms,
 	}, nil
 }
@@ -266,7 +274,7 @@ func parseCreateAsymmetricKeyResponse(payload []byte) (Response, error) {
 	}
 
 	var keyID uint16
-	err := binary.Read(bytes.NewReader(payload[1:3]), binary.BigEndian, &keyID)
+	err := binary.Read(bytes.NewReader(payload), binary.BigEndian, &keyID)
 	if err != nil {
 		return nil, err
 	}
@@ -277,6 +285,10 @@ func parseCreateAsymmetricKeyResponse(payload []byte) (Response, error) {
 }
 
 func parseSignDataEddsaResponse(payload []byte) (Response, error) {
+	if len(payload) < 1 {
+		return nil, errors.New("invalid response payload length")
+	}
+
 	return &SignDataEddsaResponse{
 		Signature: payload,
 	}, nil
@@ -293,6 +305,10 @@ func parseSignDataPkcs1Response(payload []byte) (Response, error) {
 }
 
 func parseSignDataEcdsaResponse(payload []byte) (Response, error) {
+	if len(payload) < 1 {
+		return nil, errors.New("invalid response payload length")
+	}
+
 	return &SignDataEcdsaResponse{
 		Signature: payload,
 	}, nil
