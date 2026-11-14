@@ -241,6 +241,9 @@ func (s *SecureChannel) SendEncryptedCommand(c *commands.CommandMessage) (comman
 		SessionID:   &sessionMessage.SessionID,
 		Data:        sessionMessage.EncryptedData,
 	}, MessageTypeResponse)
+	if err != nil {
+		return nil, err
+	}
 
 	if !bytes.Equal(expectedMac[:MACLength], sessionMessage.MAC) {
 		return nil, errors.New("invalid response MAC")
@@ -249,6 +252,10 @@ func (s *SecureChannel) SendEncryptedCommand(c *commands.CommandMessage) (comman
 	// Update session state
 	s.Counter++
 
+	if len(sessionMessage.EncryptedData) == 0 || len(sessionMessage.EncryptedData)%aes.BlockSize != 0 {
+		return nil, errors.New("invalid encrypted response length")
+	}
+
 	// Init the CBC decrypter
 	decrypter := cipher.NewCBCDecrypter(block, iv)
 
@@ -256,8 +263,13 @@ func (s *SecureChannel) SendEncryptedCommand(c *commands.CommandMessage) (comman
 	decryptedResponse := make([]byte, len(sessionMessage.EncryptedData))
 	decrypter.CryptBlocks(decryptedResponse, sessionMessage.EncryptedData)
 
+	response, err := unpad(decryptedResponse)
+	if err != nil {
+		return nil, err
+	}
+
 	// Parse and return the wrapped response
-	return commands.ParseResponse(unpad(decryptedResponse))
+	return commands.ParseResponse(response)
 }
 
 func (s *SecureChannel) Close() error {
