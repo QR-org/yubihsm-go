@@ -90,9 +90,14 @@ var ErrAuthCryptogram = errors.New("authentication failed: device sent wrong cry
 // NewSecureChannel initiates a new secure channel to communicate with an HSM using the given authKey
 // Call Authenticate next to establish a session.
 func NewSecureChannel(connector connector.Connector, authKeySlot uint16, password string) (*SecureChannel, error) {
+	authKey, err := authkey.FromPassword(password)
+	if err != nil {
+		return nil, err
+	}
+
 	channel := &SecureChannel{
 		ID:            0,
-		AuthKey:       authkey.NewFromPassword(password),
+		AuthKey:       authKey,
 		MACChainValue: make([]byte, 16),
 		SecurityLevel: SecurityLevelUnauthenticated,
 		authKeySlot:   authKeySlot,
@@ -100,7 +105,7 @@ func NewSecureChannel(connector connector.Connector, authKeySlot uint16, passwor
 	}
 
 	hostChallenge := make([]byte, 8)
-	_, err := rand.Read(hostChallenge)
+	_, err = rand.Read(hostChallenge)
 	if err != nil {
 		return nil, err
 	}

@@ -269,7 +269,10 @@ func CreateChangeAuthenticationKeyCommand(objID uint16, newPassword string) (*Co
 		CommandType: CommandTypeChangeAuthenticationKey,
 	}
 
-	authKey := authkey.NewFromPassword(newPassword)
+	authKey, err := authkey.FromPassword(newPassword)
+	if err != nil {
+		return nil, err
+	}
 	payload := bytes.NewBuffer([]byte{})
 	binary.Write(payload, binary.BigEndian, objID)
 	binary.Write(payload, binary.BigEndian, AlgorithmYubicoAESAuthentication)
@@ -408,7 +411,10 @@ func CreatePutAuthkeyCommand(objID uint16, label []byte, domains uint16, capabil
 }
 
 func CreatePutDerivedAuthenticationKeyCommand(objID uint16, label []byte, domains uint16, capabilities uint64, delegated uint64, password string) (*CommandMessage, error) {
-	authKey := authkey.NewFromPassword(password)
+	authKey, err := authkey.FromPassword(password)
+	if err != nil {
+		return nil, err
+	}
 	return CreatePutAuthkeyCommand(objID, label, domains, capabilities, delegated, authKey.GetEncKey(), authKey.GetMacKey())
 }
 

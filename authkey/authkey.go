@@ -1,9 +1,8 @@
 package authkey
 
 import (
+	"crypto/pbkdf2"
 	"crypto/sha256"
-
-	"golang.org/x/crypto/pbkdf2"
 )
 
 type (
@@ -17,9 +16,19 @@ const (
 	yubicoSeed        = "Yubico"
 )
 
-// NewFromPassword derives an AuthKey using pkdf2 as specified in the HSM documentation
+// FromPassword derives an AuthKey using pbkdf2 as specified in the HSM documentation.
+// It fails in FIPS 140-only mode, which does not allow the 6-byte salt the HSM uses.
+func FromPassword(password string) (AuthKey, error) {
+	return pbkdf2.Key(sha256.New, password, []byte(yubicoSeed), authKeyIterations, authKeyLength)
+}
+
+// NewFromPassword derives an AuthKey like FromPassword and panics if FromPassword fails.
 func NewFromPassword(password string) AuthKey {
-	return pbkdf2.Key([]byte(password), []byte(yubicoSeed), authKeyIterations, authKeyLength, sha256.New)
+	k, err := FromPassword(password)
+	if err != nil {
+		panic(err)
+	}
+	return k
 }
 
 // GetEncKey returns the EncryptionKey part of the AuthKey
