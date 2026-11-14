@@ -9,7 +9,6 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/enceve/crypto/cmac"
 	"github.com/certusone/yubihsm-go/authkey"
 	"github.com/certusone/yubihsm-go/commands"
 	"github.com/certusone/yubihsm-go/connector"
@@ -327,16 +326,6 @@ func (s *SecureChannel) calculateMAC(c *commands.CommandMessage, messageType Mes
 		return nil, errors.New("invalid messageType")
 	}
 
-	// Setup CMAC using aes
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-	mac, err := cmac.New(block)
-	if err != nil {
-		return nil, err
-	}
-
 	// Setup a buffer for the cmac data
 	buffer := new(bytes.Buffer)
 
@@ -355,10 +344,7 @@ func (s *SecureChannel) calculateMAC(c *commands.CommandMessage, messageType Mes
 	// Write data
 	buffer.Write(c.Data)
 
-	// Write buffer to MAC
-	mac.Write(buffer.Bytes())
-
-	return mac.Sum([]byte{}), nil
+	return cmacAES(key, buffer.Bytes())
 }
 
 // updateKeychain derives and stores the session keys.
@@ -413,17 +399,10 @@ func (s *SecureChannel) deriveKDF(key []byte, derivationConstant KeyDerivationCo
 	derivationData.Write(s.HostChallenge)
 	derivationData.Write(s.DeviceChallenge)
 
-	block, err := aes.NewCipher(key)
+	kdf, err := cmacAES(key, derivationData.Bytes())
 	if err != nil {
 		return nil, err
 	}
-	mac, err := cmac.New(block)
-	if err != nil {
-		return nil, err
-	}
-
-	mac.Write(derivationData.Bytes())
-	kdf := mac.Sum([]byte{})
 
 	return kdf[:keyLen], nil
 }
